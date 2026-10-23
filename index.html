@@ -40,9 +40,12 @@ button,input{font:inherit}button{cursor:pointer}
 .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#28243a;border:1px solid #50436f;color:#e9e2ff;border-radius:12px;padding:11px 15px;font-size:12px;display:none;z-index:5}
 .mobileback{display:none}
 @media(max-width:760px){.app{display:block;padding:0;height:100dvh}.rail{display:none}.sidebar,.chat{position:absolute;inset:0;border-radius:0;border:0}.sidebar{z-index:2}.chat{z-index:1}.app.chat-open .sidebar{display:none}.app:not(.chat-open) .chat{display:none}.sidehead{padding:20px 18px 14px}.chathead{padding:13px 15px;min-height:72px}.messages{padding:20px 15px}.composerwrap{padding:10px 12px calc(12px + env(safe-area-inset-bottom))}.msgrow{max-width:88%}.mobileback{display:inline-block;margin-right:1px}.headactions .iconbtn:nth-child(2){display:none}.sidefoot{padding-bottom:calc(14px + env(safe-area-inset-bottom))}}
+
+.authscreen{position:fixed;inset:0;z-index:20;background:radial-gradient(ellipse at 50% 0%,#29213d,transparent 55%),var(--bg);display:grid;place-items:center;padding:20px}.authcard{width:min(100%,420px);background:var(--panel);border:1px solid var(--line);border-radius:24px;padding:26px;box-shadow:0 20px 70px #0006}.authlogo{display:grid;place-items:center;margin:0 auto 14px;width:58px;height:58px;border-radius:19px;background:linear-gradient(140deg,#d6c8ff,#8569e9);color:#171327;font-weight:900;font-size:24px}.authcard h2{text-align:center;margin:0 0 7px}.authcard .sub{text-align:center;color:var(--muted);font-size:12px;margin:0 0 22px}.authcard label{display:block;color:var(--muted);font-size:12px;margin:13px 0 6px}.authcard input{width:100%;background:#101119;border:1px solid var(--line);border-radius:12px;color:var(--text);padding:12px;outline:none}.authbtn{width:100%;border:0;border-radius:12px;padding:12px;background:var(--accent);color:#1b1630;font-weight:800;margin-top:15px}.authsecondary{width:100%;background:transparent;color:var(--muted);border:1px solid var(--line);border-radius:12px;padding:11px;margin-top:9px}.roomtools{display:flex;gap:7px;padding:0 12px 12px}.roomtools button{flex:1;border:1px solid var(--line);border-radius:10px;background:#20222e;color:var(--text);padding:9px 5px;font-size:11px}.hidden{display:none!important}
 </style>
 </head>
 <body>
+<section class="authscreen" id="authscreen"><div class="authcard"><div class="authlogo">RP</div><h2 id="authTitle">RP Chat에 오신 걸 환영해요</h2><p class="sub">이메일 형식 아이디로 가입하고 친구와 대화하세요.</p><form id="authForm"><label for="authName">닉네임 (회원가입 시)</label><input id="authName" placeholder="사용할 닉네임" maxlength="24"><label for="authEmail">아이디 (이메일 형식)</label><input id="authEmail" type="email" autocomplete="username" placeholder="rpchat@example.com" required><label for="authPassword">비밀번호</label><input id="authPassword" type="password" autocomplete="current-password" minlength="6" placeholder="6자 이상" required><button class="authbtn" id="authSubmit" type="submit">회원가입</button></form><button class="authsecondary" id="authToggle" type="button">이미 계정이 있어요 · 로그인</button><p class="sub" style="margin:15px 0 0">비밀번호는 Firebase 인증으로 처리돼요. 이 화면은 구글 로그인과 무관해요.</p></div></section>
 <div class="app" id="app">
   <nav class="rail" aria-label="메인 메뉴">
     <div class="logo">RP</div>
@@ -57,12 +60,12 @@ button,input{font:inherit}button{cursor:pointer}
       <h1>메시지 <span style="color:var(--accent)">✦</span></h1>
       <input class="search" id="search" placeholder="대화 검색..." aria-label="대화 검색">
     </div>
-    <div class="sectionlabel"><span>대화 목록</span><span id="count">05</span></div>
+    <div class="sectionlabel"><span>대화 목록</span><span id="count">00</span></div><div class="roomtools"><button id="createRoom">＋ 방 만들기</button><button id="joinRoom">↗ 코드로 참여</button></div>
     <div class="contactlist" id="contactlist"></div>
     <div class="sidefoot">
       <div class="avatar">R</div>
-      <div class="meinfo"><strong id="myName">레핏</strong><small>내 프로필 · 이 기기에서 사용 중</small></div>
-      <button class="iconbtn" id="rename" title="닉네임 변경">✎</button>
+      <div class="meinfo"><strong id="myName">내 계정</strong><small id="myEmail">로그인됨</small></div>
+      <button class="iconbtn" id="rename" title="로그아웃">↪</button>
     </div>
   </aside>
   <main class="chat">
@@ -74,7 +77,7 @@ button,input{font:inherit}button{cursor:pointer}
     </header>
     <section class="messages" id="messages" aria-live="polite"></section>
     <div class="composerwrap">
-      <p class="hint">🔒 데모 버전 · 메시지는 이 브라우저에만 저장돼요</p>
+      <p class="hint" id="chatHint">Firebase 실시간 채팅 · 방 참여 코드 공유</p>
       <form class="composer" id="form">
         <input id="messageInput" autocomplete="off" placeholder="메시지를 입력해 보세요..." maxlength="2000" aria-label="메시지 입력">
         <button class="send" type="submit">전송 ↗</button>
@@ -83,53 +86,35 @@ button,input{font:inherit}button{cursor:pointer}
   </main>
 </div>
 <div class="toast" id="toast"></div>
-<script>
-const initialContacts=[
- {id:'minseo',name:'민서',initial:'M',color:'',status:'온라인',preview:'오늘 뭐 하고 있어?',time:'오후 9:41',msgs:[{text:'안녕! RP Chat에 온 걸 환영해 ✨',mine:false,time:'오후 9:38'},{text:'여기서 메시지 보내는 기능 테스트 중이야.',mine:false,time:'오후 9:39'},{text:'오, 화면 깔끔하다!',mine:true,time:'오후 9:40'},{text:'오늘 뭐 하고 있어?',mine:false,time:'오후 9:41'}]},
- {id:'yujin',name:'유진',initial:'Y',color:'green',status:'오프라인',preview:'나중에 같이 게임하자 🎮',time:'오후 8:16',msgs:[{text:'오늘 시간 돼?',mine:false,time:'오후 8:12'},{text:'나중에 같이 게임하자 🎮',mine:false,time:'오후 8:16'}]},
- {id:'dohyun',name:'도현',initial:'D',color:'blue',status:'오프라인',preview:'사진 보내줘!',time:'오후 6:05',msgs:[{text:'아까 말한 거 기억나?',mine:false,time:'오후 6:02'},{text:'응 ㅋㅋ 사진 보내줘!',mine:false,time:'오후 6:05'}]},
- {id:'harin',name:'하린',initial:'H',color:'pink',status:'오프라인',preview:'완전 좋다 🌙',time:'어제',msgs:[{text:'새로운 디자인 봤어?',mine:false,time:'어제'},{text:'완전 좋다 🌙',mine:false,time:'어제'}]},
- {id:'group',name:'우리들의 방',initial:'✦',color:'orange',status:'그룹 대화',preview:'지훈: 다들 고마워!',time:'어제',msgs:[{text:'오늘 같이 놀아서 재밌었다!',mine:false,time:'어제'},{text:'지훈: 다들 고마워!',mine:false,time:'어제'}]}
-];
-let contacts;
-try{contacts=JSON.parse(localStorage.getItem('rpchat_messages_v1'))||initialContacts.map(x=>({...x,msgs:[...x.msgs]}));}catch{contacts=initialContacts.map(x=>({...x,msgs:[...x.msgs]}));}
-let selected=contacts[0]?.id||'minseo';
-let myName=localStorage.getItem('rpchat_name')||'레핏';
-const $=id=>document.getElementById(id);
-function save(){try{localStorage.setItem('rpchat_messages_v1',JSON.stringify(contacts));localStorage.setItem('rpchat_name',myName)}catch{}}
-function now(){return new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});}
-function safe(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
-function active(){return contacts.find(c=>c.id===selected)||contacts[0];}
-function renderContacts(){
- const q=$('search').value.trim().toLowerCase();
- const filtered=contacts.filter(c=>(c.name+' '+(c.preview||'')).toLowerCase().includes(q));
- $('count').textContent=String(filtered.length).padStart(2,'0');
- $('contactlist').innerHTML=filtered.map(c=>`<div class="contact ${c.id===selected?'selected':''}" data-id="${safe(c.id)}" role="button" tabindex="0"><div class="avatar ${c.color}">${safe(c.initial)}${c.status==='온라인'?'<span class="dot"></span>':''}</div><div class="contactinfo"><div class="contacttop"><span class="contactname">${safe(c.name)}</span><span class="time">${safe(c.time||'')}</span></div><div class="preview">${safe(c.preview||'대화를 시작해 보세요')}</div></div></div>`).join('')||'<p style="color:var(--muted);font-size:12px;padding:18px">검색 결과가 없어요.</p>';
- document.querySelectorAll('.contact').forEach(el=>{const open=()=>selectContact(el.dataset.id);el.addEventListener('click',open);el.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();open()}})});
-}
-function renderMessages(){
- const c=active(); if(!c)return;
- $('headName').textContent=c.name;$('headAvatar').className='avatar '+c.color;$('headAvatar').textContent=c.initial;
- if(c.status==='온라인')$('headAvatar').innerHTML=safe(c.initial)+'<span class="dot"></span>';
- $('headStatus').innerHTML=c.status==='온라인'?'<span class="online">●</span> 온라인 · 예시 프로필':'<span style="color:var(--muted)">●</span> '+safe(c.status)+' · 오프라인 데모';
- const box=$('messages');
- if(!c.msgs.length){box.innerHTML='<div class="welcome"><div class="welcomeicon">✦</div><h2>대화를 시작해 보세요</h2><p>아래 입력창에 메시지를 적고 전송을 눌러 보세요.<br>이 데모에서는 실제 상대에게 전달되지 않아요.</p></div>';return;}
- box.innerHTML='<div class="daylabel">오늘의 대화 · 데모</div>'+c.msgs.map(m=>`<div class="msgrow ${m.mine?'mine':''}"><div class="msgmeta">${m.mine?'나':safe(c.name)} · ${safe(m.time||'')}</div><div class="bubble">${safe(m.text)}</div></div>`).join('');
- box.scrollTop=box.scrollHeight;
-}
-function selectContact(id){selected=id;$('app').classList.add('chat-open');renderContacts();renderMessages();}
-function toast(msg){const t=$('toast');t.textContent=msg;t.style.display='block';clearTimeout(window.toastTimer);window.toastTimer=setTimeout(()=>t.style.display='none',2400);}
-$('form').addEventListener('submit',e=>{e.preventDefault();const input=$('messageInput');const text=input.value.trim();if(!text)return;const c=active();c.msgs.push({text,mine:true,time:now()});c.preview=text;c.time=now();save();input.value='';renderContacts();renderMessages();});
-$('search').addEventListener('input',renderContacts);
-$('back').addEventListener('click',()=>$('app').classList.remove('chat-open'));
-$('rename').addEventListener('click',()=>{const n=prompt('표시할 닉네임을 입력해 주세요.',myName);if(n&&n.trim()){myName=n.trim().slice(0,24);$('myName').textContent=myName;save();toast('닉네임이 이 기기에 저장됐어요.');}});
-$('searchChat').addEventListener('click',()=>{const q=prompt('현재 대화에서 찾을 단어를 입력하세요.');if(q===null||!q.trim())return;const found=active().msgs.findIndex(m=>m.text.toLowerCase().includes(q.trim().toLowerCase()));if(found>=0){const rows=$('messages').querySelectorAll('.msgrow');rows[found]?.scrollIntoView({behavior:'smooth',block:'center'});toast('메시지를 찾았어요.');}else toast('일치하는 메시지가 없어요.');});
-$('chatInfo').addEventListener('click',()=>toast('예시 대화 · 실제 사용자 계정이 아니에요.'));
-$('friendsNav').addEventListener('click',()=>toast('친구 추가 기능은 Firebase 연결 단계에서 만들 수 있어요.'));
-$('notifyNav').addEventListener('click',()=>toast('새 알림이 없어요.'));
-$('settingsNav').addEventListener('click',()=>toast('설정 기능은 다음 버전에서 추가할 수 있어요.'));
-$('myName').textContent=myName;
-renderContacts();renderMessages();
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut, updateProfile } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
+import { getFirestore, collection, doc, setDoc, getDoc, updateDoc, onSnapshot, addDoc, query, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
+const firebaseConfig = {
+  apiKey: "AIzaSyCb2n9fodJmFXjg2vklL_wop7CbNlklLpk",
+  authDomain: "rp-chat-b1d52.firebaseapp.com",
+  projectId: "rp-chat-b1d52",
+  storageBucket: "rp-chat-b1d52.firebasestorage.app",
+  messagingSenderId: "153321397549",
+  appId: "1:153321397549:web:0ff6c0fd000955349d07a4",
+  measurementId: "G-GHS1NK2FZC"
+};
+const appFirebase=initializeApp(firebaseConfig), auth=getAuth(appFirebase), db=getFirestore(appFirebase);
+const $=id=>document.getElementById(id);let user=null, signupMode=true, activeRoom=null, unsubscribeMessages=null, unsubscribeRooms=null, roomList=[];
+function safe(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function toast(msg){const t=$('toast');t.textContent=msg;t.style.display='block';setTimeout(()=>t.style.display='none',2800)}
+function makeCode(){const chars='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';let s='';for(let i=0;i<8;i++)s+=chars[Math.floor(Math.random()*chars.length)];return s;}
+$('authToggle').onclick=()=>{signupMode=!signupMode;$('authTitle').textContent=signupMode?'RP Chat에 오신 걸 환영해요':'다시 만나서 반가워요';$('authName').classList.toggle('hidden',!signupMode);$('authSubmit').textContent=signupMode?'회원가입':'로그인';$('authToggle').textContent=signupMode?'이미 계정이 있어요 · 로그인':'계정이 없어요 · 회원가입';$('authPassword').autocomplete=signupMode?'new-password':'current-password';};
+$('authForm').addEventListener('submit',async e=>{e.preventDefault();const email=$('authEmail').value.trim(),password=$('authPassword').value,name=$('authName').value.trim();$('authSubmit').disabled=true;try{if(signupMode){if(!name)throw new Error('회원가입할 때 닉네임을 입력해 줘.');const cred=await createUserWithEmailAndPassword(auth,email,password);await updateProfile(cred.user,{displayName:name});await setDoc(doc(db,'users',cred.user.uid),{uid:cred.user.uid,nickname:name,email:email,createdAt:serverTimestamp()});}else await signInWithEmailAndPassword(auth,email,password);}catch(err){toast(authError(err));}finally{$('authSubmit').disabled=false;}});
+function authError(e){const c=e?.code||'';return ({'auth/email-already-in-use':'이 이메일은 이미 가입되어 있어. 로그인해 줘.','auth/invalid-email':'이메일 형식의 아이디를 확인해 줘.','auth/weak-password':'비밀번호는 6자 이상으로 만들어 줘.','auth/invalid-credential':'아이디 또는 비밀번호가 맞지 않아.','auth/network-request-failed':'인터넷 연결을 확인해 줘.'})[c]||e.message||'오류가 발생했어.'}
+onAuthStateChanged(auth,async u=>{user=u;$('authscreen').classList.toggle('hidden',!!u);$('app').classList.toggle('hidden',!u);if(!u){if(unsubscribeRooms)unsubscribeRooms();if(unsubscribeMessages)unsubscribeMessages();return;} $('myName').textContent=u.displayName||u.email.split('@')[0];$('myEmail').textContent=u.email||'';watchRooms();});
+function watchRooms(){if(unsubscribeRooms)unsubscribeRooms();const q=query(collection(db,'users',user.uid,'rooms'));unsubscribeRooms=onSnapshot(q,async snap=>{const ids=snap.docs.map(d=>d.id);const data=[];for(const id of ids){try{const rd=await getDoc(doc(db,'rooms',id));if(rd.exists())data.push({id,...rd.data()})}catch{}}roomList=data;renderRooms();if(!activeRoom&&data.length)openRoom(data[0].id);},err=>toast('대화 목록 오류: '+err.message));}
+function renderRooms(){const q=$('search').value.trim().toLowerCase();const filtered=roomList.filter(r=>(r.name||'채팅방').toLowerCase().includes(q)||r.id.toLowerCase().includes(q));$('count').textContent=String(filtered.length).padStart(2,'0');$('contactlist').innerHTML=filtered.map(r=>`<div class="contact ${r.id===activeRoom?'selected':''}" data-id="${safe(r.id)}"><div class="avatar">✦</div><div class="contactinfo"><div class="contacttop"><span class="contactname">${safe(r.name||'채팅방')}</span></div><div class="preview">참여 코드: ${safe(r.id)}</div></div></div>`).join('')||'<p style="color:var(--muted);font-size:12px;padding:18px">대화방이 없어요. 방을 만들거나 코드로 참여해 보세요.</p>';document.querySelectorAll('.contact').forEach(el=>el.onclick=()=>openRoom(el.dataset.id));}
+async function openRoom(id){activeRoom=id;const r=roomList.find(x=>x.id===id);$('headName').textContent=r?.name||'채팅방';$('headAvatar').textContent='✦';$('headAvatar').className='avatar';$('headStatus').textContent='실시간 채팅 · 코드 '+id;$('chatHint').textContent='참여 코드: '+id+' · 친구에게 코드를 알려 줘';$('app').classList.add('chat-open');renderRooms();if(unsubscribeMessages)unsubscribeMessages();const q=query(collection(db,'rooms',id,'messages'),orderBy('createdAt','asc'));unsubscribeMessages=onSnapshot(q,snap=>{const box=$('messages');box.innerHTML=snap.docs.map(d=>{const m=d.data(),mine=m.senderId===user.uid,time=m.createdAt?.toDate?m.createdAt.toDate().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}):'';return `<div class="msgrow ${mine?'mine':''}"><div class="msgmeta">${safe(m.senderName||'사용자')} · ${safe(time)}</div><div class="bubble">${safe(m.text)}</div></div>`}).join('')||'<div class="welcome"><div class="welcomeicon">✦</div><h2>대화를 시작해 보세요</h2><p>첫 메시지를 보내 보세요!</p></div>';box.scrollTop=box.scrollHeight;},err=>toast('메시지 불러오기 실패: '+err.message));}
+$('createRoom').onclick=async()=>{const name=prompt('채팅방 이름을 입력해 줘.','우리들의 방');if(!name?.trim())return;try{const id=makeCode()+makeCode();await setDoc(doc(db,'rooms',id),{name:name.trim().slice(0,40),members:[user.uid],createdBy:user.uid,createdAt:serverTimestamp()});await setDoc(doc(db,'users',user.uid,'rooms',id),{joinedAt:serverTimestamp()});toast('방을 만들었어! 참여 코드를 친구에게 알려 줘: '+id); }catch(e){toast('방 만들기 실패: '+e.message)}};
+$('joinRoom').onclick=async()=>{const id=prompt('친구에게 받은 16자리 참여 코드를 입력해 줘.');if(!id?.trim())return;const code=id.trim().toUpperCase();try{const ref=doc(db,'rooms',code),snap=await getDoc(ref);if(!snap.exists())throw new Error('해당 코드의 방을 찾지 못했어.');const data=snap.data();if(!data.members.includes(user.uid))await updateDoc(ref,{members:[...data.members,user.uid]});await setDoc(doc(db,'users',user.uid,'rooms',code),{joinedAt:serverTimestamp()});toast('채팅방에 참여했어!');}catch(e){toast('참여 실패: '+e.message)}};
+$('form').addEventListener('submit',async e=>{e.preventDefault();const text=$('messageInput').value.trim();if(!text||!activeRoom)return;try{await addDoc(collection(db,'rooms',activeRoom,'messages'),{text,senderId:user.uid,senderName:user.displayName||user.email.split('@')[0],createdAt:serverTimestamp()});$('messageInput').value='';}catch(err){toast('전송 실패: '+err.message)}});
+$('search').addEventListener('input',renderRooms);$('back').onclick=()=>$('app').classList.remove('chat-open');$('rename').onclick=async()=>{if(confirm('RP Chat에서 로그아웃할까?'))await signOut(auth)};$('searchChat').onclick=()=>{const term=prompt('현재 화면에서 찾을 단어를 입력해 줘.');if(!term)return;const rows=[...$('messages').querySelectorAll('.msgrow')];const row=rows.find(r=>r.textContent.toLowerCase().includes(term.toLowerCase()));if(row)row.scrollIntoView({behavior:'smooth',block:'center'});else toast('일치하는 메시지가 없어.')};$('chatInfo').onclick=()=>{if(activeRoom)toast('참여 코드: '+activeRoom)};$('friendsNav').onclick=()=>$('joinRoom').click();$('notifyNav').onclick=()=>toast('새 알림이 없어요.');$('settingsNav').onclick=()=>toast('로그아웃은 왼쪽 아래 화살표를 눌러 줘.');
 </script>
 </body>
 </html>
